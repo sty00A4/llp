@@ -1,0 +1,6 @@
+NAME math
+LEXER {
+    IGNORE " " "\t" "#.+\n"
+    VALUE int "\d+"
+    VALUE float "\d+(?:\.\d+)?"
+}

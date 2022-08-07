@@ -1,0 +1,26 @@
+Code
+    CodeStatement *  ->  Code: body = CodeStatement *
+
+CodeStatement
+    Program
+    Assign
+
+Prefix
+    private  ->  ?: private = true
+    meta     ->  ?: meta = true
+    mut      ->  ?: mut = true
+
+Assign
+    Type Identifier = Expretion  ->  Assign: id = Identifier, val = Expretion, type = Type
+    Identifier = Expretion       ->  Assign: id = Identifier, val = Expretion
+
+Program
+    program Identifier { ProgramStatement * }  ->  ProgramDef: id = Identifier, body = { ProgramStatement * }
+
+ProgramStatement
+    Prefix Procedure
+    Prefix Function
+    Prefix Object
+    Prefix Enumeration
+
+Statement
