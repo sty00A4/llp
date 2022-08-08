@@ -38,23 +38,24 @@ class Position:
     def sub(self) -> str:
         return self.file.text[self.idx:] if self.idx < len(self.file.text) else ""
 class Token:
-    def __init__(self, t: str, value, start: Position, end: Position):
+    def __init__(self, t: str, value, start: Position, stop: Position):
         self.type = t
         self.value = value
         self.start = start
-        self.end = end
+        self.stop = stop
         self.file = start.file
     def copy(self):
-        return Token(self.type, self.value, self.start, self.end)
+        return Token(self.type, self.value, self.start, self.stop)
     def __str__(self):
         return repr(self)
     def __repr__(self):
         return f"[{self.type}" + (":" + repr(self.value) if self.value is not None else "") + "]"
     def sub(self):
-        return self.file.text[self.start.idx:self.end.idx]
+        return self.file.text[self.start.idx:self.stop.idx]
 
 keywords = ["NAME", "EXTENTION", "LEXER", "PARSER", "TRUE", "IGNORE", "VALUE", "DELIM", "LAYER", "EXPECT", "BINARY"]
 class T(Enum):
+    EOF = auto()
     NL = auto()
     INT = auto()
     FLOAT = auto()
@@ -96,7 +97,7 @@ class Lexer:
             if match in keywords:
                 self.tokens.append(Token(T.__dict__[match], None, start, self.pos.copy()))
                 return True
-            self.tokens.append(Token("name", match, start, self.pos.copy()))
+            self.tokens.append(Token(T.ID, match, start, self.pos.copy()))
             return True
         return False
     def int(self):
@@ -206,7 +207,8 @@ class Lexer:
             if self.int(): continue
             if self.str(): continue
             self.pos.advance()
-        return self.tokens
+        self.tokens.append(Token(T.EOF, None, self.pos.copy(), self.pos.copy()))
+        return self.tokens, None
 
 def tokenize(fn, text):
     lexer = Lexer(fn, text)
