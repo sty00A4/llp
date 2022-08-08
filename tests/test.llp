@@ -3,4 +3,21 @@ LEXER {
     IGNORE " " "\t" "#.+\n"
     VALUE int "\d+"
     VALUE float "\d+(?:\.\d+)?"
+    add "+"
+    sub "-"
+    mul "*"
+    div "/"
 }
+PARSER {
+    LAYER Atom {
+        [int] -> Int tok=1
+        [float] -> Float tok=1
+        EXPECT
+    }
+    LAYER Term {
+        BINARY(Atom ([mul][div]))
+    } Atom
+    LAYER Arith {
+        BINARY(Term ([add][sub]))
+    } Term
+} Arith

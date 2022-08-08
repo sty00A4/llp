@@ -53,7 +53,7 @@ class Token:
     def sub(self):
         return self.file.text[self.start.idx:self.end.idx]
 
-keywords = ["NAME", "EXTENTION", "LEXER", "PARSER", "TRUE", "IGNORE", "VALUE", "DELIM", "LAYER"]
+keywords = ["NAME", "EXTENTION", "LEXER", "PARSER", "TRUE", "IGNORE", "VALUE", "DELIM", "LAYER", "EXPECT", "BINARY"]
 class T(Enum):
     NL = auto()
     INT = auto()
@@ -65,6 +65,8 @@ class T(Enum):
     BODY_OUT = auto()
     GROUP_IN = auto()
     GROUP_OUT = auto()
+    TO = auto()
+    EQ = auto()
     NAME = auto()
     EXTENTION = auto()
     LEXER = auto()
@@ -74,6 +76,8 @@ class T(Enum):
     VALUE = auto()
     DELIM = auto()
     LAYER = auto()
+    EXPECT = auto()
+    BINARY = auto()
 
 class Lexer:
     def __init__(self, fn, text):
@@ -141,6 +145,31 @@ class Lexer:
             self.tokens.append(Token(T.STR, match, start, self.pos.copy()))
             return True
         return False
+    def token(self):
+        match = self.match(r'\[\w+:\w+\]')
+        if match:
+            start = self.pos.copy()
+            self.pos.advance(len(match))
+            match = match[1:-1].split(":")
+            type_, value = match[0], match[1]
+            self.tokens.append(Token(T.TOKEN, (type_, value), start, self.pos.copy()))
+            return True
+        match = self.match(r'\[\w+\]')
+        if match:
+            start = self.pos.copy()
+            self.pos.advance(len(match))
+            match = match[1:-1]
+            self.tokens.append(Token(T.TOKEN, (match,), start, self.pos.copy()))
+            return True
+        return False
+    def to(self):
+        match = self.match(r"->")
+        if match:
+            start = self.pos.copy()
+            self.pos.advance(len(match))
+            self.tokens.append(Token(T.TO, None, start, self.pos.copy()))
+            return True
+        return False
     def lex(self):
         while self.pos.char() is not None:
             if self.pos.char() in [" ", "\t"]:
@@ -158,6 +187,20 @@ class Lexer:
                 self.tokens.append(Token(T.BODY_OUT, None, self.pos.copy(), self.pos.copy()))
                 self.pos.advance()
                 continue
+            if self.pos.char() == "(":
+                self.tokens.append(Token(T.GROUP_IN, None, self.pos.copy(), self.pos.copy()))
+                self.pos.advance()
+                continue
+            if self.pos.char() == ")":
+                self.tokens.append(Token(T.GROUP_OUT, None, self.pos.copy(), self.pos.copy()))
+                self.pos.advance()
+                continue
+            if self.pos.char() == "=":
+                self.tokens.append(Token(T.EQ, None, self.pos.copy(), self.pos.copy()))
+                self.pos.advance()
+                continue
+            if self.to(): continue
+            if self.token(): continue
             if self.name(): continue
             if self.float(): continue
             if self.int(): continue
