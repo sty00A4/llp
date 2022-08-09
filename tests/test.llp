@@ -8,3 +8,15 @@ LEXER {
     mul "*"
     div "/"
 }
+PARSER {
+    Atom {
+        [int] -> Int tok=1
+        [float] -> Float tok=1
+    } UNEXPECTED
+    Term {
+        BINARY(Atom ([mul][div])) -> BinOp left=1 op=2 right=3
+    } Atom
+    Arith {
+        BINARY(Term ([add][sub])) -> BinOp left=1 op=2 right=3
+    } Term
+} Arith

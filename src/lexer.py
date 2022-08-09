@@ -51,7 +51,7 @@ class Token:
     def __repr__(self):
         return f"[{self.type}" + (":" + repr(self.value) if self.value is not None else "") + "]"
     def sub(self):
-        return self.file.text[self.start.idx:self.stop.idx]
+        return self.file.text[self.start.idx:self.stop.idx+1]
 
 keywords = ["NAME", "EXTENTION", "LEXER", "PARSER", "TRUE", "IGNORE", "VALUE", "DELIM", "LAYER", "EXPECT", "BINARY"]
 class T(Enum):
@@ -82,7 +82,7 @@ class T(Enum):
 
 class Lexer:
     def __init__(self, fn, text):
-        self.pos, self.tokens = Position(-1, 0, -1, File(fn, text)), []
+        self.pos, self.tokens = Position(-1, 1, -1, File(fn, text)), []
         self.pos.advance()
     def match(self, pattern: str):
         match = re.search(pattern, self.pos.sub())
