@@ -1,5 +1,4 @@
 from src.lexer import Token, T, Position
-from enum import Enum, auto
 
 class Error:
     def __init__(self, token: Token):

@@ -1,5 +1,4 @@
-import src.lexer as lexer
-import src.parser as parser
+from src import lexer, parser, create
 
 with open("tests/test.llp", "r") as f:
     tokens, err = lexer.tokenize("tests/test.llp", f.read())
@@ -7,5 +6,5 @@ with open("tests/test.llp", "r") as f:
     # for tok in tokens: print(tok)
     body, err = parser.parse(tokens)
     if err: exit(str(err))
-    print(body)
-    print()
+    # print(body)
+    language, err = create.create(body)
