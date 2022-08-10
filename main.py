@@ -7,7 +7,6 @@ class Interpreter:
         return method(node)
     def no_visit_method(self, node): raise Exception(f"no visit_{type(node).__name__} method defined")
 
-
 def generate(llp_fn: str, fn: str, debug: bool = False) -> dict:
     with open(llp_fn, "r") as f:
         tokens, err = lexer.tokenize(llp_fn, f.read())

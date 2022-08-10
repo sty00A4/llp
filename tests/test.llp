@@ -15,7 +15,7 @@ PARSER {
         [int] -> Int tok=1
         [float] -> Float tok=1
         [evalIn] Arith [evalOut] -> 2
-    } UNEXPECTED
+    } ERROR Unexpected @file_name @token @start_ln @start_col
     Term {
         Atom ([mul][div]) Atom -> BinOp left=1 op=2 right=3
     } Atom
@@ -23,3 +23,6 @@ PARSER {
         Term ([add][sub]) Term -> BinOp left=1 op=2 right=3
     } Term
 } Arith
+ERROR {
+    Unexpected "%1\nSYNTAX ERROR: unexpected %2, ln %3 col %4"
+}

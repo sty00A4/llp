@@ -50,6 +50,12 @@ class IDNode(Node):
         self.token = token
     def __repr__(self):
         return f"({self.token})"
+class VarNode(Node):
+    def __init__(self, token: l.Token):
+        super().__init__(token.start, token.stop)
+        self.token = token
+    def __repr__(self):
+        return f"(@{self.token})"
 class TokenNode(Node):
     def __init__(self, token: l.Token):
         super().__init__(token.start, token.stop)
@@ -83,6 +89,18 @@ class ParserNode(Node):
         self.start_layer = start_layer
     def __repr__(self):
         return f"(PARSER {self.body} {str(self.start_layer if self.start_layer else '')})"
+class ErrorNode(Node):
+    def __init__(self, body: BodyNode, start: l.Position, stop: l.Position):
+        super().__init__(start, stop)
+        self.body = body
+    def __repr__(self):
+        return f"(ERROR {self.body})"
+class ErrorDefNode(Node):
+    def __init__(self, name: BodyNode, s: StringNode):
+        super().__init__(name.start, s.stop)
+        self.name, self.str = name, s
+    def __repr__(self):
+        return f"({self.name} {self.str})"
 class ValueTokenNode(Node):
     def __init__(self, name: l.Token, strs: list, start: l.Position, stop: l.Position):
         super().__init__(start, stop)
@@ -137,6 +155,12 @@ class CallNode(Node):
         self.name, self.group = name, group
     def __repr__(self):
         return f"({self.name} {self.group})"
+class ErrorCallNode(Node):
+    def __init__(self, name: l.Token, args: list, start: l.Position, stop: l.Position):
+        super().__init__(start, stop)
+        self.name, self.args = name, args
+    def __repr__(self):
+        return f"(ERROR {self.name} " + " ".join([str(n) for n in self.args]) + ")"
 
 
 class Parser:
@@ -155,6 +179,7 @@ class Parser:
     def translate(self, token: l.Token):
         if token.type == l.T.TOKEN: return TokenNode(token)
         if token.type == l.T.ID: return IDNode(token)
+        if token.type == l.T.VAR: return VarNode(token)
         if token.type == l.T.STR: return StringNode(token)
         if token.type == l.T.INT: return IntNode(token)
         if token.type == l.T.FLOAT: return FloatNode(token)
@@ -201,6 +226,17 @@ class Parser:
             if err: return None, err
             if self.token.type == l.T.ID:
                 link_layer = IDNode(self.next())
+            if self.token.type == l.T.ERROR:
+                start, stop = self.next().start.copy(), self.token.stop.copy()
+                if self.token.type != l.T.ID: return None, ExpectedError(l.T.ID, self.token)
+                name = IDNode(self.next())
+                args = []
+                while self.token.type != l.T.NL:
+                    stop = self.token.stop.copy()
+                    token = self.translate(self.next())
+                    if err: return None, err
+                    args.append(token)
+                link_layer = ErrorCallNode(name, args, start, stop)
             if self.token.type != l.T.NL: return None, UnexpectedError(self.token)
             return LayerNode(name, body, link_layer), None
         return None, ExpectedError(l.T.ID, self.token)
@@ -243,20 +279,12 @@ class Parser:
         self.advance()
         return GroupNode(elements, start, stop), None
     def pattern(self) -> PatternNode:
-        tokens = [l.T.ID, l.T.TOKEN, l.T.BINARY, l.T.GROUP_IN]
+        tokens = [l.T.ID, l.T.TOKEN, l.T.GROUP_IN]
         pattern = []
         if self.token.type not in tokens: return None, UnexpectedError(self.token)
         start = self.token.start.copy()
         stop = self.token.stop.copy()
         while self.token.type in tokens:
-            if self.token.type in [l.T.BINARY]:
-                name = self.token.copy()
-                self.advance()
-                group, err = self.group()
-                if err: return None, err
-                stop = group.stop.copy()
-                pattern.append(CallNode(name, group))
-                continue
             if self.token.type == l.T.GROUP_IN:
                 group, err = self.group()
                 if err: return None, err
@@ -265,6 +293,12 @@ class Parser:
             stop = self.token.stop.copy()
             pattern.append(self.translate(self.next()))
         return PatternNode(pattern, start, stop), None
+    def error_stat(self) -> ErrorDefNode:
+        if self.token.type != l.T.ID: return None, ExpectedError(l.T.ID, self.token)
+        name = IDNode(self.next())
+        if self.token.type != l.T.STR: return None, ExpectedError(l.T.STR, self.token)
+        s = StringNode(self.next())
+        return ErrorDefNode(name, s), None
     def stat(self):
         if self.token.type == l.T.NAME:
             start = self.token.start.copy()
@@ -290,6 +324,11 @@ class Parser:
             if self.token.type == l.T.ID:
                 start_layer = IDNode(self.next())
             return ParserNode(body, start_layer, start, body.stop.copy()), None
+        if self.token.type == l.T.ERROR:
+            start = self.next().start.copy()
+            body, err = self.body(self.error_stat)
+            if err: return None, err
+            return ErrorNode(body, start, body.stop.copy()), None
         return None, UnexpectedError(self.token)
     def body(self, stat) -> BodyNode:
         if self.token.type != l.T.BODY_IN: return None, UnexpectedError(self.token)
@@ -306,11 +345,6 @@ class Parser:
             if self.token.type == l.T.EOF: return None, ExpectedError(l.T.BODY_OUT, self.token)
         stop = self.next().stop.copy()
         return BodyNode(statements, start, stop), None
-    def parser_body(self):
-        if self.token.type != l.T.BODY_IN: return None, ExpectedError(l.T.BODY_IN, self.token)
-        start = self.token.start.copy()
-        self.advance()
-        return BodyNode([], start, self.token.stop.copy()), None
     def parse(self):
         start = self.token.start.copy()
         statements = []

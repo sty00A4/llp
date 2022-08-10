@@ -51,9 +51,11 @@ class Token:
     def __repr__(self):
         return f"[{self.type}" + (":" + repr(self.value) if self.value is not None else "") + "]"
     def sub(self):
-        return self.file.text[self.start.idx:self.stop.idx+1]
+        return self.file.text[self.start.idx:self.stop.idx]
 
-keywords = ["NAME", "EXTENTION", "LEXER", "PARSER", "TRUE", "IGNORE", "VALUE", "DELIM", "LAYER", "EXPECT", "BINARY"]
+keywords = [
+    "NAME", "EXTENTION", "LEXER", "PARSER", "TRUE", "IGNORE", "VALUE", "DELIM", "LAYER", "EXPECT", "ERROR",
+]
 class T(Enum):
     EOF = auto()
     NL = auto()
@@ -62,6 +64,7 @@ class T(Enum):
     STR = auto()
     ID = auto()
     TOKEN = auto()
+    VAR = auto()
     BODY_IN = auto()
     BODY_OUT = auto()
     GROUP_IN = auto()
@@ -78,7 +81,7 @@ class T(Enum):
     DELIM = auto()
     LAYER = auto()
     EXPECT = auto()
-    BINARY = auto()
+    ERROR = auto()
 
 class Lexer:
     def __init__(self, fn, text):
@@ -98,6 +101,17 @@ class Lexer:
                 self.tokens.append(Token(T.__dict__[match], None, start, self.pos.copy()))
                 return True
             self.tokens.append(Token(T.ID, match, start, self.pos.copy()))
+            return True
+        return False
+    def var(self):
+        match = self.match(r"@[a-zA-Z_]([a-zA-Z_0-9])+\b")
+        if match:
+            start = self.pos.copy()
+            self.pos.advance(len(match))
+            if match in keywords:
+                self.tokens.append(Token(T.__dict__[match], None, start, self.pos.copy()))
+                return True
+            self.tokens.append(Token(T.VAR, match[1:], start, self.pos.copy()))
             return True
         return False
     def int(self):
@@ -200,6 +214,7 @@ class Lexer:
                 self.tokens.append(Token(T.EQ, None, self.pos.copy(), self.pos.copy()))
                 self.pos.advance()
                 continue
+            if self.var(): continue
             if self.to(): continue
             if self.token(): continue
             if self.name(): continue

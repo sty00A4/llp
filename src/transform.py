@@ -52,6 +52,12 @@ class ID(Base):
         self.value = value
     def __str__(self):
         return self.value
+class Var(Base):
+    def __init__(self, value: str, start: l.Position, stop: l.Position):
+        super().__init__(start, stop)
+        self.value = value
+    def __str__(self):
+        return self.value
 class Token(Base):
     def __init__(self, type: str, value, start: l.Position, stop: l.Position):
         super().__init__(start, stop)
@@ -115,12 +121,31 @@ class Parser(Base):
         self.layers, self.start_layer = layers, start_layer
     def get_layer(self, name: ID):
         for layer in self.layers:
+            print(name.value, layer.name.value)
             if name.value == layer.name.value: return layer
 
+class ErrorCall(Base):
+    def __init__(self, name: ID, args: list, start: l.Position, stop: l.Position):
+        super().__init__(start, stop)
+        self.name, self.args = name, args
+class ErrorDef(Base):
+    def __init__(self, name: ID, s: String):
+        super().__init__(name.start, s.stop)
+        self.name, self.str = name, s
+class Error(Base):
+    def __init__(self, defs: list, start: l.Position, stop: l.Position):
+        super().__init__(start, stop)
+        self.defs = defs
+    def get_def(self, name: ID):
+        for defin in self.defs:
+            if name.value == defin.name.value: return defin
+
 class Language(Base):
-    def __init__(self, lexer: Lexer, parser: Parser, name: str = "unnamed", extention=None):
+    def __init__(self, lexer: Lexer, parser: Parser, error: Error, name: str = "unnamed", extention=None):
+        super().__init__(lexer.start, error.stop)
         self.lexer = lexer
         self.parser = parser
+        self.error = error
         self.name = name
         self.extention = extention
 
@@ -135,6 +160,8 @@ class Transform:
     def visit_FloatNode(self, node: p.FloatNode) -> Float: return Float(node.token.value, node.start, node.stop), None
     def visit_StringNode(self, node: p.StringNode) -> String: return String(node.token.value, node.start, node.stop), None
     def visit_IDNode(self, node: p.IDNode) -> ID: return ID(node.token.value, node.start, node.stop), None
+    def visit_VarNode(self, node: p.VarNode) -> Var:
+        return Var(node.token.value, node.start, node.stop), None
     def visit_TokenNode(self, node: p.TokenNode) -> Token:
         return Token(node.type, node.value, node.start, node.stop), None
     def visit_GroupNode(self, node: p.GroupNode) -> Group:
@@ -219,6 +246,21 @@ class Transform:
         pattern, err = self.visit(node.pattern)
         if err: return None, err
         return To(pattern, node_, node.start, node.stop), None
+    def visit_ErrorCallNode(self, node: p.ErrorCallNode) -> ErrorCall:
+        name, err = self.visit(node.name)
+        if err: return None, err
+        args = []
+        for n in node.args:
+            arg, err = self.visit(n)
+            if err: return None, err
+            args.append(arg)
+        return ErrorCall(name, args, node.start, node.stop), None
+    def visit_ErrorDefNode(self, node: p.ErrorDefNode) -> ErrorDef:
+        name, err = self.visit(node.name)
+        if err: return None, err
+        s, err = self.visit(node.str)
+        if err: return None, err
+        return ErrorDef(name, s), None
     def visit_LayerNode(self, node: p.LayerNode) -> Layer:
         patterns, err = self.visit(node.body)
         if err: return None, err
@@ -233,14 +275,19 @@ class Transform:
         start_layer, err = self.visit(node.start_layer)
         if err: return None, err
         return Parser(layers, start_layer, node.start, node.stop), None
+    def visit_ErrorNode(self, node: p.ErrorNode) -> Error:
+        body, err = self.visit(node.body)
+        if err: return None, err
+        return Error(body, node.start, node.stop), None
 
 def transform(body: p.BodyNode) -> Language:
     transform = Transform()
     elements, err = transform.visit(body)
-    name, extention, lexer, parser = None, None, None, None
+    name, extention, lexer, parser, error = None, None, None, None, None
     for v in elements:
         if isinstance(v, Name): name = v.name
         if isinstance(v, Extention): extention = v.ext
         if isinstance(v, Lexer): lexer = v
         if isinstance(v, Parser): parser = v
-    return Language(lexer, parser, name, extention), None
+        if isinstance(v, Error): error = v
+    return Language(lexer, parser, error, name, extention), None

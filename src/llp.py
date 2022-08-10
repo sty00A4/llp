@@ -16,7 +16,7 @@ class MatchError(Error):
         self.name = "mactch error"
 class IDNotDefinedError(Error):
     def __init__(self, id: str, start: Position, stop: Position):
-        super().__init__(f"id {id} not defined", start, stop)
+        super().__init__(str(id), start, stop)
         self.name = "id not defined error"
 class PatternMatchError(Error):
     def __init__(self, e):
@@ -179,6 +179,7 @@ def parse(tokens: list, parser: t.Parser, DEBUG: bool = False) -> dict:
         layer = parser.get_layer(name)
         if not layer:
             debug_exit("layer", name, None, "IDNotDefinedError")
+            # TODO: weird shit, error definition Unexpected saved instead of layer definition Atom
             return None, IDNotDefinedError(name, parser.start, parser.stop)
         match, err = match_layer(layer)
         debug_exit("layer", name, match["type"] if match else match, True if err else None)
