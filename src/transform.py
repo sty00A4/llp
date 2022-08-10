@@ -1,6 +1,7 @@
 import src.lexer as l
 import src.parser as p
 
+
 class Base:
     def convTree(self, prefix: str = "", subprefix: str = "  "):
         s = f"{self.__class__.__name__}\n"
@@ -115,7 +116,7 @@ class Transform:
         i = 0
         while i < len(tokens):
             if isinstance(tokens[i], IgnoreToken):
-                ignores.extend(tokens[i].strs)
+                ignores.extend([s for s in tokens[i].strs])
                 tokens.pop(i)
             else:
                 i += 1
