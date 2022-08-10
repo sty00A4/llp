@@ -222,7 +222,7 @@ class Transform:
     def visit_LayerNode(self, node: p.LayerNode) -> Layer:
         patterns, err = self.visit(node.body)
         if err: return None, err
-        link_layer, err = self.visit(node.link_layer)
+        link_layer, err = self.visit(node.link_layer) if node.link_layer else (None, None)
         if err: return None, err
         name, err = self.visit(node.name)
         if err: return None, err
