@@ -100,7 +100,7 @@ class GroupNode(Node):
     def __repr__(self):
         return "( " + " ".join([str(n) for n in self.elements]) + " )"
 class NodeNode(Node):
-    def __init__(self, name: list, vars_: list, numbers: list, start: Position, stop: Position):
+    def __init__(self, name: Token, vars_: list, numbers: list, start: Position, stop: Position):
         super().__init__(start, stop)
         self.name, self.vars, self.numbers = name, vars_, numbers
     def __repr__(self):
@@ -199,7 +199,7 @@ class Parser:
             self.advance()
             if self.token.type != T.INT: return None, ExpectedError(T.INT, self.token)
             stop = self.token.stop.copy()
-            numbers.append(self.next().copy())
+            numbers.append(IntNode(self.next().copy()))
         return NodeNode(name, vars_, numbers, start, stop), None
     def group(self) -> GroupNode:
         if self.token.type != T.GROUP_IN: return None, ExpectedError(T.GROUP_IN, self.token)

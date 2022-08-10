@@ -8,3 +8,5 @@ with open("tests/test.llp", "r") as f:
     if err: exit(str(err))
     # print(body)
     language, err = create.create(body)
+    if err: exit(str(err))
+    print(language.convTree("", ". "))
