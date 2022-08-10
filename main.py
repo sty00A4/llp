@@ -10,5 +10,6 @@ with open("tests/test.llp", "r") as f:
     lang, err = transform.transform(body)
     if err: exit(str(err))
     # print(language.convTree("", ". "))
-    ast, err = llp.from_file("tests/test.math", lang, True)
+    ast, err = llp.from_file("tests/test.math", lang)
     if err: exit(str(err))
+    print(ast)
