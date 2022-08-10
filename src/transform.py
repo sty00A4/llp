@@ -158,7 +158,7 @@ class Transform:
         start_layer = node.start_layer.value
         return Parser(layers, start_layer), None
 
-def create(body: p.BodyNode) -> Language:
+def transform(body: p.BodyNode) -> Language:
     transform = Transform()
     elements, err = transform.visit(body)
     name, extention, lexer, parser = None, None, None, None
