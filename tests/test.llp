@@ -16,9 +16,12 @@ PARSER {
         [float] -> Float tok=1
         [evalIn] Arith [evalOut] -> 2
     } ERROR Unexpected @file_name @token @start_ln @start_col
-    Term {
-        BINARY(Atom ([mul][div])) -> 1
+    Factor {
+        [sub] Atom -> UnaryOperation node=2 op=1
     } Atom
+    Term {
+        BINARY(Factor ([mul][div])) -> 1
+    } Factor
     Arith {
         BINARY(Term ([add][sub])) -> 1
     } Term

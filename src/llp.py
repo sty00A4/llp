@@ -98,17 +98,17 @@ def parse(tokens: list, parser: t.Parser, error: t.Error, DEBUG: bool = False) -
     def debug(name: str, x):
         if not DEBUG: return
         global indent, token
-        print(f"{' '*indent}{token_str()}    {name} {x}")
+        print(f"{' '*indent}{idx}{token_str()}    {name} {x}")
     def debug_enter(name: str, x):
         if not DEBUG: return
         global indent, token
-        print(f"{' '*indent}{token_str()} -> {name} {x}")
+        print(f"{' '*indent}{idx}{token_str()} -> {name} {x}")
         indent += 1
     def debug_exit(name: str, x, *results):
         if not DEBUG: return
         global indent, token
         indent -= 1
-        print(f"{' '*indent}{token_str()} <- {name} {x} ({', '.join([(str(result) if result is not None else '') for result in results])})")
+        print(f"{' '*indent}{idx}{token_str()} <- {name} {x} ({', '.join([(str(result) if result is not None else '') for result in results])})")
     def update():
         global token, idx
         if idx < len(tokens): token = tokens[idx]
@@ -171,12 +171,12 @@ def parse(tokens: list, parser: t.Parser, error: t.Error, DEBUG: bool = False) -
                 debug_exit("binary on right", binary, None, True)
                 return None, err
             if not right:
-                debug_exit("binary on op", binary)
+                debug_exit("binary on right", binary)
                 return None, None
             left = {"type": "BinaryOperation", "left": left, "op": op, "right": right}
             op, err = match_any(binary.op)
             if err:
-                debug_exit("binary on op", binary, None, True)
+                debug_exit("binary on op loop", binary, None, True)
                 return None, err
             if not op: break
         debug_exit("binary", binary, left['type'])
