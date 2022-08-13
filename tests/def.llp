@@ -10,6 +10,7 @@ LEXER {
     sub '\-'
     mul '\*'
     div '\/'
+    VALUE prefix 'public' 'const'
     define 'define'
     end 'end'
     print 'print'
@@ -38,6 +39,7 @@ PARSER {
         Statement* -> Body body=1
     }
     Definition {
+        [prefix:public] Definition -> 2 prefix=1
         [define] Id [nl] Body [end] -> Definition name=2 body=4
     }
     Program {

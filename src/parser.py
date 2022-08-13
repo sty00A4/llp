@@ -261,10 +261,9 @@ class Parser:
         if err: return None, err
         return ToNode(pattern, node), None
     def node(self) -> [NodeNode, IntNode]:
-        if self.token.type == l.T.INT: return IntNode(self.next()), None
-        if self.token.type != l.T.ID: return None, ExpectedError(l.T.ID, self.token)
+        if self.token.type not in [l.T.ID, l.T.INT]: return None, ExpectedError(l.T.ID, self.token)
         start, stop = self.token.start.copy(), self.token.stop.copy()
-        name = IDNode(self.next())
+        name = self.translate(self.next())
         vars_, numbers = [], []
         while self.token.type != l.T.NL:
             if self.token.type != l.T.ID: return None, ExpectedError(l.T.ID, self.token)

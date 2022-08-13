@@ -227,9 +227,10 @@ def parse(tokens: list, parser: t.Parser, error: t.Error, DEBUG: bool = False) -
                     if not match: break
                     rec.append(match)
                 if match:
-                    if isinstance(to.node, t.Int):
-                        return rec[to.node.value-1], None
-                    node = {"type": to.node.name.value}
+                    if isinstance(to.node.name, t.Int):
+                        node = rec[to.node.name.value-1]
+                    else:
+                        node = {"type": to.node.name.value}
                     node_vars = to.node.vars
                     for k in node_vars:
                         if node_vars[k].value-1 >= len(rec): raise Exception("index error for patterns")

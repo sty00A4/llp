@@ -2,6 +2,7 @@ from main import *
 
 class Def(Interpreter):
     variables = {}
+    public = []
     types = {}
     def visit_Id(self, node):
         name = node['tok']['value']
@@ -20,6 +21,9 @@ class Def(Interpreter):
     def visit_Definition(self, node):
         name = node['name']['tok']['value']
         self.variables[name] = node['body']
+        if 'prefix' in node:
+            if node['prefix']['value'] == 'public':
+                self.public.append(name)
         self.types[name] = "procedure"
         return None, False, None
     def visit_Body(self, node):
