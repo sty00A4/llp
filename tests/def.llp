@@ -31,11 +31,8 @@ PARSER {
         [int] -> Id tok=1
         [evalIn] Expr [evalOut] -> 2
     } ERROR Unexpected @token @start_ln @start_col
-    Expr {
-        Atom -> 1
-    } Atom
     Statement {
-        [print] Expr [nl] -> Print node=2
+        [print] Atom [nl] -> Print node=2
     }
     Body {
         Statement* -> Body body=1

@@ -8,6 +8,8 @@ class Interpreter:
         return method(node)
     def no_visit_method(self, node):
         exit(f"no visit_{node['type']} method defined in interpreter")
+    def enter(self, node):
+        return self.visit(node)
 
 def generate(llp_fn: str, fn: str, debug: bool = False) -> dict:
     with open(llp_fn, "r") as f:
@@ -27,9 +29,9 @@ def generate(llp_fn: str, fn: str, debug: bool = False) -> dict:
 def run(interpreter, llp_fn: str, fn: str, debug: bool = False):
     ast = generate(llp_fn, fn, debug)
     math = interpreter()
-    value, err = math.visit(ast)
-    if err: exit(str(err))
-    print(value)
+    out = math.enter(ast)
+    if out[-1]: exit(str(out[-1]))
+    if out[0] is not None: print(out[0])
 
 
 if __name__ == '__main__':
