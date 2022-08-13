@@ -34,7 +34,8 @@ class Def(Interpreter):
         return None, False, None
     def enter(self, node):
         _, _, err = self.visit(node)
-        if 'main' not in self.variables: return None, False, 'no main function'
+        if 'main' not in self.variables: return None, False, 'no public main definition'
+        if 'main' not in self.public: return None, False, 'no public main definition'
         return self.visit(self.variables['main'])
 
 run(Def, 'def.llp', 'test.def', False)
