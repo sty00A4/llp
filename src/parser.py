@@ -137,6 +137,12 @@ class GroupNode(Node):
         self.elements = elements
     def __repr__(self):
         return "( " + " ".join([str(n) for n in self.elements]) + " )"
+class RepeatNode(Node):
+    def __init__(self, node, stop: l.Position):
+        super().__init__(node.start, stop)
+        self.node = node
+    def __repr__(self):
+        return f"({self.node} *)"
 class NodeNode(Node):
     def __init__(self, name: l.Token, vars_: list, numbers: list, start: l.Position, stop: l.Position):
         super().__init__(start, stop)
@@ -285,7 +291,7 @@ class Parser:
         self.advance()
         return GroupNode(elements, start, stop), None
     def pattern(self) -> PatternNode:
-        tokens = [l.T.ID, l.T.TOKEN, l.T.GROUP_IN, l.T.BINARY]
+        tokens = [l.T.ID, l.T.TOKEN, l.T.GROUP_IN, l.T.BINARY, l.T.REPEAT]
         pattern = []
         if self.token.type not in tokens: return None, UnexpectedError(self.token)
         start = self.token.start.copy()
@@ -302,6 +308,11 @@ class Parser:
                 group, err = self.group()
                 if err: return None, err
                 pattern.append(BinaryNode(group, start))
+                continue
+            if self.token.type == l.T.REPEAT:
+                stop = self.token.stop.copy()
+                self.advance()
+                pattern[-1] = RepeatNode(pattern[-1], stop)
                 continue
             stop = self.token.stop.copy()
             pattern.append(self.translate(self.next()))

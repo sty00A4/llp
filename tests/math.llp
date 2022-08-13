@@ -1,0 +1,31 @@
+NAME math
+LEXER {
+    IGNORE " " "\t" "\n"
+    VALUE float "[0-9]+\.[0-9]+" "[0-9]+\." "\.[0-9]+"
+    VALUE int "[0-9]+"
+    evalIn "\("
+    evalOut "\)"
+    add "\+"
+    sub "\-"
+    mul "\*"
+    div "\/"
+}
+PARSER {
+    Atom {
+        [int] -> Int tok=1
+        [float] -> Float tok=1
+        [evalIn] Arith [evalOut] -> 2
+    } ERROR Unexpected @file_name @token @start_ln @start_col
+    Factor {
+        [sub] Atom -> UnaryOperation node=2 op=1
+    } Atom
+    Term {
+        BINARY(Factor ([mul][div])) -> 1
+    } Factor
+    Arith {
+        BINARY(Term ([add][sub])) -> 1
+    } Term
+} Arith
+ERROR {
+    Unexpected "%1\nSYNTAX ERROR: unexpected %2, ln %3 col %4"
+}

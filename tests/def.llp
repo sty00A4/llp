@@ -1,0 +1,54 @@
+NAME def
+LEXER {
+    IGNORE ' ' '\t' '#.+$'
+    nl '\n'
+    VALUE float '[0-9]+\.[0-9]+" "[0-9]+\." "\.[0-9]+'
+    VALUE int '[0-9]+'
+    evalIn '\('
+    evalOut '\)'
+    add '\+'
+    sub '\-'
+    mul '\*'
+    div '\/'
+    define 'define'
+    end 'end'
+    print 'print'
+    VALUE id '[a-zA-Z_]([a-zA-Z_0-9]+)'
+}
+PARSER {
+    Int {
+        [int] -> Int tok=1
+    } ERROR Expected 'int' @token @start_ln @start_col
+    Float {
+        [float] -> Float tok=1
+    } ERROR Expected 'float' @token @start_ln @start_col
+    Id {
+        [id] -> Id tok=1
+    } ERROR Expected 'id' @token @start_ln @start_col
+    Atom {
+        [int] -> Int tok=1
+        [float] -> Float tok=1
+        [int] -> Id tok=1
+        [evalIn] Expr [evalOut] -> 2
+    } ERROR Unexpected @token @start_ln @start_col
+    Expr {
+        Atom -> 1
+    } Atom
+    Statement {
+        [print] Expr [nl] -> Print node=2
+    }
+    Body {
+        Statement* -> Body body=1
+    }
+    Definition {
+        [define] Id [nl] Body [end] -> Definition name=2 body=4
+    }
+    Program {
+        Definition* [eof] -> Body body=1
+    }
+} Program
+ERROR {
+    NoDefinition 'NO DEFINITION: expected "define", got %1 (ln %2, col %3)'
+    Expected 'EXPECTED: %1, got %2 (ln %3, col %4)'
+    Unexpected 'UNEXPECTED: %1 (ln %3, col %4)'
+}

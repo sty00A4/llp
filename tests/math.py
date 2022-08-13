@@ -22,8 +22,4 @@ class Math(Interpreter):
         if node["op"]['type'].value == "sub": return -value, None
         return None, f"unsupported unary operation '{node['op']['type']}'"
 
-ast = generate("test.llp", "test.math")
-math = Math()
-value, err = math.visit(ast)
-if err: exit(str(err))
-print(value)
+run(Math, "math.llp", "test.math")

@@ -13,7 +13,7 @@ class Error:
 class MatchError(Error):
     def __init__(self, msg: str, pattern: str, start: Position, stop: Position):
         super().__init__(f"{msg} ('{pattern}')", start, stop)
-        self.name = "mactch error"
+        self.name = "match error"
 class IDNotDefinedError(Error):
     def __init__(self, id: str, start: Position, stop: Position):
         super().__init__(str(id), start, stop)
@@ -22,6 +22,10 @@ class PatternMatchError(Error):
     def __init__(self, e):
         super().__init__(f"cannot match {e}", e.start, e.stop)
         self.name = "pattern match error"
+class CharacterError(Error):
+    def __init__(self, pos: Position):
+        super().__init__(f"unrecognized characyer {repr(pos.char())}", pos, pos)
+        self.name = "character error"
 
 class LangError:
     def __init__(self, msg: str, start: Position, stop: Position):
@@ -80,13 +84,17 @@ def lex(fn: str, text: str, lexer: t.Lexer) -> list:
                         matched = True
                         token_, start = token, pos.copy()
                         pos.advance(len(m))
-                        tokens.append(Token(token_.name, m, start, pos.copy()))
+                        tokens.append(Token(token_.name, None, start, pos.copy()))
                         break
                 if matched: break
                 continue
+        if not matched: return None, CharacterError(pos)
     tokens.append(Token(t.ID("eof", pos.copy(), pos.copy()), None, pos.copy(), pos.copy()))
     return tokens, None
 def parse(tokens: list, parser: t.Parser, error: t.Error, DEBUG: bool = False) -> dict:
+    if not tokens: return None, None
+    if len(tokens) == 0: return None, None
+    if not parser: return None, Error('no parser defined', tokens[0]['start'], tokens[-1]['stop'])
     global indent, idx, token
     indent = 0
     idx = 0
@@ -131,6 +139,7 @@ def parse(tokens: list, parser: t.Parser, error: t.Error, DEBUG: bool = False) -
         if isinstance(x, t.Token): return match_token(x)
         if isinstance(x, t.Group): return match_group(x)
         if isinstance(x, t.Binary): return match_binary(x)
+        if isinstance(x, t.Repeat): return match_repeat(x)
         return None, PatternMatchError(x)
     def match_token(tok: t.Token):
         debug_enter("token", tok)
@@ -150,6 +159,26 @@ def parse(tokens: list, parser: t.Parser, error: t.Error, DEBUG: bool = False) -
                 debug_exit("group", group, match["type"] if match else match)
                 return match, None
         debug_exit("group", group, False)
+        return False, None
+    def match_repeat(repeat: t.Repeat):
+        debug_enter("repeat", repeat)
+        matches = []
+        match, err = match_any(repeat.node)
+        if err:
+            debug_exit("repeat", repeat, match["type"] if match else match, True if err else None)
+            return None, err
+        if match:
+            matches.append(match)
+            while match:
+                match, err = match_any(repeat.node)
+                if err:
+                    debug_exit("repeat loop", repeat, match["type"] if match else match, True if err else None)
+                    return None, err
+                if not match: break
+                matches.append(match)
+            debug_exit('repeat', repeat, len(matches))
+            return matches, None
+        debug_exit("group", repeat, False)
         return False, None
     def match_binary(binary: t.Binary):
         debug_enter("binary", binary)
@@ -213,7 +242,7 @@ def parse(tokens: list, parser: t.Parser, error: t.Error, DEBUG: bool = False) -
         return False, None
     def visit_layer(name):
         debug_enter("layer", name)
-        if isinstance(name, t.ErrorCall):
+        if isinstance(name, t.ErrorCall) and error:
             error_def = error.get_def(name.name)
             if not error_def: return None, IDNotDefinedError(name.name, name.start, name.stop)
             args = []
@@ -221,8 +250,10 @@ def parse(tokens: list, parser: t.Parser, error: t.Error, DEBUG: bool = False) -
                 if isinstance(arg, t.Var):
                     value = get_var(arg)
                     args.append(value if value is not None else "?")
+                elif isinstance(arg, t.String):
+                    args.append(arg.value)
                 else:
-                    args.append("?")
+                    args.append(str(arg))
             if isinstance(error_def, t.ErrorDef):
                 s, i = "", 0
                 while i < len(error_def.str.value):
@@ -244,7 +275,7 @@ def parse(tokens: list, parser: t.Parser, error: t.Error, DEBUG: bool = False) -
             debug_exit("layer", name, None, "IDNotDefinedError")
             return None, IDNotDefinedError(name, parser.start, parser.stop)
         match, err = match_layer(layer)
-        debug_exit("layer", name, match["type"] if match else match, True if err else None)
+        debug_exit("layer", name, match["type"] if type(match) is dict else match, True if err else None)
         return match, err
     ast, err = visit_layer(parser.start_layer)
     return ast, err

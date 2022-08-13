@@ -107,6 +107,12 @@ class Group(Base):
         self.group = group
     def __str__(self):
         return f"({' '.join([f'{e}' for e in self.group])})"
+class Repeat(Base):
+    def __init__(self, node, start: l.Position, stop: l.Position):
+        super().__init__(start, stop)
+        self.node = node
+    def __str__(self):
+        return f"({self.node} *)"
 class Binary(Base):
     def __init__(self, group: Group, start: l.Position, stop: l.Position):
         super().__init__(start, stop)
@@ -151,7 +157,10 @@ class Error(Base):
 
 class Language(Base):
     def __init__(self, lexer: Lexer, parser: Parser, error: Error, name: str = "unnamed", extention=None):
-        super().__init__(lexer.start, error.stop)
+        stop = lexer.stop
+        if parser: stop = parser.stop
+        if error: stop = error.stop
+        super().__init__(lexer.start, stop)
         self.lexer = lexer
         self.parser = parser
         self.error = error
@@ -241,6 +250,10 @@ class Transform:
             if err: return None, err
             pattern.append(e)
         return Pattern(pattern, node.start, node.stop), None
+    def visit_RepeatNode(self, node: p.RepeatNode) -> Repeat:
+        node, err = self.visit(node.node)
+        if err: return None, err
+        return Repeat(node, node.start, node.stop), None
     def visit_NodeNode(self, node: p.NodeNode) -> Node:
         name, err = self.visit(node.name)
         if err: return None, err

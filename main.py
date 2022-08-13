@@ -2,11 +2,12 @@ from src import lexer, parser, transform, llp
 
 class Interpreter:
     def visit(self, node: dict):
+        if type(node) is not dict: exit(f"cannot visit node of type {type(node).__name__}")
         method_name = f"visit_{node['type']}"
         method = getattr(self, method_name, self.no_visit_method)
         return method(node)
     def no_visit_method(self, node):
-        raise Exception(f"no visit_{node['type']} method defined")
+        exit(f"no visit_{node['type']} method defined in interpreter")
 
 def generate(llp_fn: str, fn: str, debug: bool = False) -> dict:
     with open(llp_fn, "r") as f:
@@ -23,6 +24,14 @@ def generate(llp_fn: str, fn: str, debug: bool = False) -> dict:
         if err: exit(str(err))
         return ast
 
+def run(interpreter, llp_fn: str, fn: str, debug: bool = False):
+    ast = generate(llp_fn, fn, debug)
+    math = interpreter()
+    value, err = math.visit(ast)
+    if err: exit(str(err))
+    print(value)
+
+
 if __name__ == '__main__':
-    ast = generate("tests/test.llp", "test.math")
+    ast = generate("tests/math.llp", "test.math")
     print(ast)

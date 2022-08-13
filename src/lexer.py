@@ -54,7 +54,8 @@ class Token:
         return self.file.text[self.start.idx:self.stop.idx]
 
 keywords = [
-    "NAME", "EXTENTION", "LEXER", "PARSER", "TRUE", "IGNORE", "VALUE", "DELIM", "LAYER", "EXPECT", "ERROR", "BINARY"
+    "NAME", "EXTENTION", "LEXER", "PARSER", "TRUE", "IGNORE", "VALUE", "DELIM", "LAYER", "EXPECT", "ERROR", "BINARY",
+    "REPEAT"
 ]
 class T(Enum):
     EOF = auto()
@@ -71,6 +72,7 @@ class T(Enum):
     GROUP_OUT = auto()
     TO = auto()
     EQ = auto()
+    REPEAT = auto()
     NAME = auto()
     EXTENTION = auto()
     LEXER = auto()
@@ -213,6 +215,10 @@ class Lexer:
                 continue
             if self.pos.char() == "=":
                 self.tokens.append(Token(T.EQ, None, self.pos.copy(), self.pos.copy()))
+                self.pos.advance()
+                continue
+            if self.pos.char() == "*":
+                self.tokens.append(Token(T.REPEAT, None, self.pos.copy(), self.pos.copy()))
                 self.pos.advance()
                 continue
             if self.var(): continue
