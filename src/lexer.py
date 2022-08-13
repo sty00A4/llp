@@ -54,7 +54,7 @@ class Token:
         return self.file.text[self.start.idx:self.stop.idx]
 
 keywords = [
-    "NAME", "EXTENTION", "LEXER", "PARSER", "TRUE", "IGNORE", "VALUE", "DELIM", "LAYER", "EXPECT", "ERROR",
+    "NAME", "EXTENTION", "LEXER", "PARSER", "TRUE", "IGNORE", "VALUE", "DELIM", "LAYER", "EXPECT", "ERROR", "BINARY"
 ]
 class T(Enum):
     EOF = auto()
@@ -82,6 +82,7 @@ class T(Enum):
     LAYER = auto()
     EXPECT = auto()
     ERROR = auto()
+    BINARY = auto()
 
 class Lexer:
     def __init__(self, fn, text):

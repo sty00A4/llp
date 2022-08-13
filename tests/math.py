@@ -5,7 +5,7 @@ class Math(Interpreter):
         return int(node["tok"]["value"]), None
     def visit_Float(self, node: dict):
         return float(node["tok"]["value"]), None
-    def visit_BinOp(self, node: dict):
+    def visit_BinaryOperation(self, node: dict):
         left, err = self.visit(node["left"])
         right, err = self.visit(node["right"])
         if node["op"]['type'].value == "add": return left + right, None

@@ -107,31 +107,40 @@ class Group(Base):
         self.group = group
     def __str__(self):
         return f"({' '.join([f'{e}' for e in self.group])})"
-class Call(Base):
-    def __init__(self, name: str, group: Group, start: l.Position, stop: l.Position):
+class Binary(Base):
+    def __init__(self, group: Group, start: l.Position, stop: l.Position):
         super().__init__(start, stop)
-        self.name, self.group = name, group
+        self.left = group.group[0]
+        self.op = group.group[1]
+        self.right = group.group[2] if len(group.group) >= 3 else group.group[0]
+    def __str__(self):
+        return f"(BINARY {self.left} {self.op} {self.right})"
 class To(Base):
     def __init__(self, pattern: Pattern, node: Node, start: l.Position, stop: l.Position):
         super().__init__(start, stop)
         self.pattern, self.node = pattern, node
+    def __str__(self):
+        return f"({self.pattern} -> {self.node})"
 class Parser(Base):
     def __init__(self, layers: list, start_layer: str, start: l.Position, stop: l.Position):
         super().__init__(start, stop)
         self.layers, self.start_layer = layers, start_layer
     def get_layer(self, name: ID):
         for layer in self.layers:
-            print(name.value, layer.name.value)
             if name.value == layer.name.value: return layer
 
 class ErrorCall(Base):
     def __init__(self, name: ID, args: list, start: l.Position, stop: l.Position):
         super().__init__(start, stop)
         self.name, self.args = name, args
+    def __str__(self):
+        return f"(ERROR ({' '.join([f'{e}' for e in self.args])}) )"
 class ErrorDef(Base):
     def __init__(self, name: ID, s: String):
         super().__init__(name.start, s.stop)
         self.name, self.str = name, s
+    def __str__(self):
+        return f"({self.name} {self.str})"
 class Error(Base):
     def __init__(self, defs: list, start: l.Position, stop: l.Position):
         super().__init__(start, stop)
@@ -217,10 +226,10 @@ class Transform:
             else:
                 i += 1
         return Lexer(tokens, ignores, node.start, node.stop), None
-    def visit_CallNode(self, node: p.CallNode) -> Call:
+    def visit_BinaryNode(self, node: p.BinaryNode) -> Binary:
         group, err = self.visit(node.group)
         if err: return None, err
-        return Call(node.name.value, group, node.start, node.stop), None
+        return Binary(group, node.start, node.stop), None
     def visit_PatternNode(self, node: p.PatternNode) -> Pattern:
         pattern = []
         for n in node.elements:

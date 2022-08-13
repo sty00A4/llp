@@ -161,6 +161,12 @@ class ErrorCallNode(Node):
         self.name, self.args = name, args
     def __repr__(self):
         return f"(ERROR {self.name} " + " ".join([str(n) for n in self.args]) + ")"
+class BinaryNode(Node):
+    def __init__(self, group: GroupNode, start: l.Position):
+        super().__init__(start, group.stop)
+        self.group = group
+    def __repr__(self):
+        return f"(BINARY {self.group})"
 
 
 class Parser:
@@ -229,14 +235,14 @@ class Parser:
             if self.token.type == l.T.ERROR:
                 start, stop = self.next().start.copy(), self.token.stop.copy()
                 if self.token.type != l.T.ID: return None, ExpectedError(l.T.ID, self.token)
-                name = IDNode(self.next())
+                error_name = IDNode(self.next())
                 args = []
                 while self.token.type != l.T.NL:
                     stop = self.token.stop.copy()
                     token = self.translate(self.next())
                     if err: return None, err
                     args.append(token)
-                link_layer = ErrorCallNode(name, args, start, stop)
+                link_layer = ErrorCallNode(error_name, args, start, stop)
             if self.token.type != l.T.NL: return None, UnexpectedError(self.token)
             return LayerNode(name, body, link_layer), None
         return None, ExpectedError(l.T.ID, self.token)
@@ -279,7 +285,7 @@ class Parser:
         self.advance()
         return GroupNode(elements, start, stop), None
     def pattern(self) -> PatternNode:
-        tokens = [l.T.ID, l.T.TOKEN, l.T.GROUP_IN]
+        tokens = [l.T.ID, l.T.TOKEN, l.T.GROUP_IN, l.T.BINARY]
         pattern = []
         if self.token.type not in tokens: return None, UnexpectedError(self.token)
         start = self.token.start.copy()
@@ -289,6 +295,13 @@ class Parser:
                 group, err = self.group()
                 if err: return None, err
                 pattern.append(group)
+                continue
+            if self.token.type == l.T.BINARY:
+                start = self.token.start.copy()
+                self.advance()
+                group, err = self.group()
+                if err: return None, err
+                pattern.append(BinaryNode(group, start))
                 continue
             stop = self.token.stop.copy()
             pattern.append(self.translate(self.next()))

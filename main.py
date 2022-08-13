@@ -5,7 +5,8 @@ class Interpreter:
         method_name = f"visit_{node['type']}"
         method = getattr(self, method_name, self.no_visit_method)
         return method(node)
-    def no_visit_method(self, node): raise Exception(f"no visit_{type(node).__name__} method defined")
+    def no_visit_method(self, node):
+        raise Exception(f"no visit_{node['type']} method defined")
 
 def generate(llp_fn: str, fn: str, debug: bool = False) -> dict:
     with open(llp_fn, "r") as f:

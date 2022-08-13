@@ -17,10 +17,10 @@ PARSER {
         [evalIn] Arith [evalOut] -> 2
     } ERROR Unexpected @file_name @token @start_ln @start_col
     Term {
-        Atom ([mul][div]) Atom -> BinOp left=1 op=2 right=3
+        BINARY(Atom ([mul][div])) -> 1
     } Atom
     Arith {
-        Term ([add][sub]) Term -> BinOp left=1 op=2 right=3
+        BINARY(Term ([add][sub])) -> 1
     } Term
 } Arith
 ERROR {

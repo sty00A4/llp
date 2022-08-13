@@ -86,25 +86,29 @@ def lex(fn: str, text: str, lexer: t.Lexer) -> list:
                 continue
     tokens.append(Token(t.ID("eof", pos.copy(), pos.copy()), None, pos.copy(), pos.copy()))
     return tokens, None
-def parse(tokens: list, parser: t.Parser, DEBUG: bool = False) -> dict:
+def parse(tokens: list, parser: t.Parser, error: t.Error, DEBUG: bool = False) -> dict:
     global indent, idx, token
     indent = 0
     idx = 0
     token = tokens[idx]
+    def token_str(t: dict = None) -> str:
+        if t is None:
+            return f"[{token['type']}{':'+token['value'] if token['value'] is not None else ''}]"
+        return f"[{t['type']}{':'+t['value'] if t['value'] is not None else ''}]"
     def debug(name: str, x):
         if not DEBUG: return
         global indent, token
-        print(f"{' '*indent}[{token['type']}]    {name} {x}")
+        print(f"{' '*indent}{token_str()}    {name} {x}")
     def debug_enter(name: str, x):
         if not DEBUG: return
         global indent, token
-        print(f"{' '*indent}[{token['type']}] -> {name} {x}")
+        print(f"{' '*indent}{token_str()} -> {name} {x}")
         indent += 1
     def debug_exit(name: str, x, *results):
         if not DEBUG: return
         global indent, token
         indent -= 1
-        print(f"{' '*indent}[{token['type']}] <- {name} {x} ({', '.join([(str(result) if result is not None else '') for result in results])})")
+        print(f"{' '*indent}{token_str()} <- {name} {x} ({', '.join([(str(result) if result is not None else '') for result in results])})")
     def update():
         global token, idx
         if idx < len(tokens): token = tokens[idx]
@@ -113,14 +117,20 @@ def parse(tokens: list, parser: t.Parser, DEBUG: bool = False) -> dict:
         idx += 1
         update()
     def next():
-        global token
         token_ = token.copy()
         advance()
         return token_
+    def get_var(var: t.Var):
+        if var.value == "file_name": return token["start"].file.fn
+        if var.value == "token": return token["type"]
+        if var.value == "start_ln": return token["start"].ln
+        if var.value == "start_col": return token["start"].col
+        return None
     def match_any(x):
         if isinstance(x, t.ID): return visit_layer(x)
         if isinstance(x, t.Token): return match_token(x)
         if isinstance(x, t.Group): return match_group(x)
+        if isinstance(x, t.Binary): return match_binary(x)
         return None, PatternMatchError(x)
     def match_token(tok: t.Token):
         debug_enter("token", tok)
@@ -141,6 +151,36 @@ def parse(tokens: list, parser: t.Parser, DEBUG: bool = False) -> dict:
                 return match, None
         debug_exit("group", group, False)
         return False, None
+    def match_binary(binary: t.Binary):
+        debug_enter("binary", binary)
+        left, err = match_any(binary.left)
+        if err:
+            debug_exit("binary on left", binary, None, True)
+            return None, err
+        if not left: return None, None
+        op, err = match_any(binary.op)
+        if err:
+            debug_exit("binary on op", binary, None, True)
+            return None, err
+        if not op:
+            debug_exit("binary on op", binary)
+            return None, None
+        while op:
+            right, err = match_any(binary.right)
+            if err:
+                debug_exit("binary on right", binary, None, True)
+                return None, err
+            if not right:
+                debug_exit("binary on op", binary)
+                return None, None
+            left = {"type": "BinaryOperation", "left": left, "op": op, "right": right}
+            op, err = match_any(binary.op)
+            if err:
+                debug_exit("binary on op", binary, None, True)
+                return None, err
+            if not op: break
+        debug_exit("binary", binary, left['type'])
+        return left, None
     def match_layer(layer: t.Layer):
         global idx
         match = True
@@ -171,15 +211,37 @@ def parse(tokens: list, parser: t.Parser, DEBUG: bool = False) -> dict:
             update()
         if layer.link_layer: return visit_layer(layer.link_layer)
         return False, None
-    def visit_layer(name: t.ID):
+    def visit_layer(name):
         debug_enter("layer", name)
-        if name.value == "UNEXPECTED":
-            debug_exit("layer", name, None, "UnexpectedError")
-            return None, UnexpectedError(token)
+        if isinstance(name, t.ErrorCall):
+            error_def = error.get_def(name.name)
+            if not error_def: return None, IDNotDefinedError(name.name, name.start, name.stop)
+            args = []
+            for arg in name.args:
+                if isinstance(arg, t.Var):
+                    value = get_var(arg)
+                    args.append(value if value is not None else "?")
+                else:
+                    args.append("?")
+            if isinstance(error_def, t.ErrorDef):
+                s, i = "", 0
+                while i < len(error_def.str.value):
+                    if error_def.str.value[i] == "%":
+                        i += 1
+                        if not error_def.str.value[i].isdigit():
+                            s += "?"
+                            i += 1
+                            continue
+                        s += str(args[int(error_def.str.value[i])-1]) if int(error_def.str.value[i])-1 < len(args) else "?"
+                        i += 1
+                    else:
+                        s += error_def.str.value[i]
+                        i += 1
+                return None, s
+
         layer = parser.get_layer(name)
         if not layer:
             debug_exit("layer", name, None, "IDNotDefinedError")
-            # TODO: weird shit, error definition Unexpected saved instead of layer definition Atom
             return None, IDNotDefinedError(name, parser.start, parser.stop)
         match, err = match_layer(layer)
         debug_exit("layer", name, match["type"] if match else match, True if err else None)
@@ -193,9 +255,10 @@ def from_file(fn: str, lang: t.Language, debug: bool = False) -> dict:
             text = f.read()
             tokens, err = lex(fn, text, lang.lexer)
             if debug:
-                for tok in tokens: print(tok)
+                for tok in tokens: print(f"[{tok['type']}{':'+repr(tok['value']) if tok['value'] is not None else ''}]")
+                print()
             if err: return None, err
-            ast, err = parse(tokens, lang.parser, debug)
+            ast, err = parse(tokens, lang.parser, lang.error, debug)
             if err: return None, err
             if debug: print(ast)
             return ast, err
@@ -206,7 +269,7 @@ def from_file(fn: str, lang: t.Language, debug: bool = False) -> dict:
 def from_text(text: str, lang: t.Language, debug: bool = False) -> dict:
     tokens, err = lex("<text-input>", text, lang.lexer)
     if debug:
-        for tok in tokens: print(tok)
+        for tok in tokens: print(f"[{tok['type']}{':'+tok['value'] if tok['value'] is not None else ''}]")
     if err: return None, err
     ast, err = parse(tokens, lang.parser, debug)
     if err: return None, err
